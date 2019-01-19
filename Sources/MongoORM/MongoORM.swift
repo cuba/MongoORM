@@ -9,9 +9,10 @@ import Foundation
 import MongoKitten
 import MapCodableKit
 
-typealias Query = MongoKitten.Query
+public typealias Query = MongoKitten.Query
+public typealias ObjectId = MongoKitten.ObjectId
 
-public class MongoORM {
+public class MongoORM<T: MongoDocument> {
     public let database: MongoKitten.Database
     public let collection: MongoKitten.Collection
     
@@ -31,9 +32,9 @@ public class MongoORM {
         }
     }
     
-    public func update<T: MongoDocument>(_ document: T) throws -> T {
+    public func update(_ document: T) throws -> T {
         guard let oid = document.oid else { throw DocumentUpdateError.missingObjectId }
-        let query = MongoKitten.Query(aqt: .valEquals(key: "_id", val: oid))
+        let query = Query(aqt: .valEquals(key: "_id", val: oid))
         let map = try Map(document: document)
         let mongoDocument = try map.makeDocument()
         
@@ -56,7 +57,7 @@ public class MongoORM {
         }
     }
     
-    public func insert<T: MongoDocument>(_ document: T) throws -> T {
+    public func insert(_ document: T) throws -> T {
         var document = document
         let map = try Map(document: document)
         let mongoDocument = try map.makeDocument()
@@ -71,13 +72,13 @@ public class MongoORM {
         return document
     }
     
-    public func first<T: MongoDocument>(id: String) throws -> T {
-        let oid = try MongoKitten.ObjectId(id)
+    public func first(id: String) throws -> T {
+        let oid = try ObjectId(id)
         return try first(oid: oid)
     }
     
-    public func first<T: MongoDocument>(oid: ObjectId) throws -> T {
-        let query = MongoKitten.Query(aqt: .valEquals(key: "_id", val: oid))
+    public func first(oid: ObjectId) throws -> T {
+        let query = Query(aqt: .valEquals(key: "_id", val: oid))
         
         guard let first: T = try self.first(where: query) else {
             throw DocumentLoadError.documentNotFound
@@ -86,17 +87,36 @@ public class MongoORM {
         return first
     }
     
-    public func first<T: MongoDocument>(where query: MongoKitten.Query = Query()) throws -> T? {
-        guard let map = try self.find(where: query, skip: 0, limit: 1).first else { return nil }
+    public func first(where query: Query = Query()) throws -> T? {
+        guard let map = try self.mapArray(where: query, skip: 0, limit: 1).first else { return nil }
         let object = try T(map: map)
         return object
     }
     
-    public func all(skip: Int = 0, limit: Int = 0) throws -> [Map] {
+    public func all(skip: Int = 0, limit: Int = 0) throws -> (successes: [T], failures: [(Map, Error)]) {
         return try find(where: Query(), skip: skip, limit: limit)
     }
     
-    public func find(where query: MongoKitten.Query, skip: Int = 0, limit: Int = 0) throws -> [Map] {
+    public func find(where query: Query, skip: Int = 0, limit: Int = 0) throws -> (successes: [T], failures: [(Map, Error)]) {
+        let mapArray = try self.mapArray(where: query, skip: skip, limit: limit)
+        
+        // Convert maps into objects
+        var successes: [T] = []
+        var failures: [(Map, Error)] = []
+        
+        for map in mapArray {
+            do {
+                let object = try T(map: map)
+                successes.append(object)
+            } catch {
+                failures.append((map, error))
+            }
+        }
+        
+        return (successes: successes, failures: failures)
+    }
+    
+    public func mapArray(where query: Query, skip: Int = 0, limit: Int = 0) throws -> [Map] {
         let result = try collection.find(query, skipping: skip, limitedTo: limit)
         
         #if DEBUG
@@ -104,6 +124,7 @@ public class MongoORM {
         print("MONGO: [RESULT] \(result)")
         #endif
         
+        // Get an array of maps
         var mapArray: [Map] = []
         
         for document in result {
@@ -115,7 +136,7 @@ public class MongoORM {
         return mapArray
     }
     
-    public func destroy<T: MongoDocument>(_ document: T) throws {
+    public func destroy(_ document: T) throws {
         guard let oid = document.oid else { throw DocumentDeleteError.missingObjectId }
         try destroy(oid: oid)
     }
@@ -125,8 +146,8 @@ public class MongoORM {
         try destroy(oid: oid)
     }
     
-    public func destroy(oid: MongoKitten.ObjectId) throws {
-        let query = MongoKitten.Query(aqt: .valEquals(key: "_id", val: oid))
+    public func destroy(oid: ObjectId) throws {
+        let query = Query(aqt: .valEquals(key: "_id", val: oid))
         let result = try collection.remove(query, limitedTo: 1, stoppingOnError: true)
         
         switch result {
