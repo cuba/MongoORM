@@ -14,23 +14,26 @@ public typealias ObjectId = MongoKitten.ObjectId
 public typealias Map = MapCodableKit.Map
 
 public class MongoORM<T: MongoDocument> {
-    public let database: MongoKitten.Database
     public let collection: MongoKitten.Collection
     
-    public init(uri: URL, collectionName: String) throws {
+    public convenience init(uri: URL, collectionName: String) throws {
         #if DEBUG
         print("MONGO: [CONNECTION] \(uri.absoluteString) -> \(collectionName)")
         #endif
         
         let database = try MongoKitten.Database(uri.absoluteString)
-        self.database = database
         let collections = try database.listCollections()
         
         if let collection = collections.first(where: { $0.name == collectionName}) {
-            self.collection = collection
+            self.init(collection: collection)
         } else {
-            self.collection = try database.createCollection(named: collectionName)
+            let collection = try database.createCollection(named: collectionName)
+            self.init(collection: collection)
         }
+    }
+    
+    public init(collection: MongoKitten.Collection) {
+        self.collection = collection
     }
     
     public func update(_ document: T) throws -> T {
@@ -135,6 +138,14 @@ public class MongoORM<T: MongoDocument> {
         }
         
         return mapArray
+    }
+    
+    public func contains(where query: MongoKitten.Query) throws -> Bool {
+        return try collection.count(query) > 0
+    }
+    
+    public func count(where query: MongoKitten.Query) throws -> Int {
+        return try collection.count(query)
     }
     
     public func destroy(_ document: T) throws {
