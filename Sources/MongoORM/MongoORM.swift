@@ -11,6 +11,7 @@ import MapCodableKit
 
 public typealias Query = MongoKitten.Query
 public typealias ObjectId = MongoKitten.ObjectId
+public typealias Map = MapCodableKit.Map
 
 public class MongoORM<T: MongoDocument> {
     public let database: MongoKitten.Database
