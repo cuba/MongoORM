@@ -8,15 +8,15 @@
 import Foundation
 import MongoKitten
 
-class ConnectionPool {
+public class ConnectionPool {
     private var _database: MongoKitten.Database?
-    let url: URL
+    public let url: URL
     
-    init(url: URL) {
+    public init(url: URL) {
         self.url = url
     }
     
-    func database() throws -> MongoKitten.Database {
+    public func database() throws -> MongoKitten.Database {
         if let database = self._database {
             return database
         } else {
@@ -26,7 +26,7 @@ class ConnectionPool {
         }
     }
     
-    func collection(forName name: String) throws -> MongoKitten.Collection {
+    public func collection(forName name: String) throws -> MongoKitten.Collection {
         let database = try self.database()
         let collections = try database.listCollections()
         
@@ -38,7 +38,7 @@ class ConnectionPool {
         }
     }
     
-    func orm<T: MongoDocument>(for type: MongoDocument.Type, collectionName: String) throws -> MongoORM<T> {
+    public func orm<T: MongoDocument>(for type: MongoDocument.Type, collectionName: String) throws -> MongoORM<T> {
         let collection = try self.collection(forName: collectionName)
         return MongoORM<T>(collection: collection)
     }
