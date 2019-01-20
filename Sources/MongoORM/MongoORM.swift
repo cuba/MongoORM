@@ -14,21 +14,18 @@ public typealias ObjectId = MongoKitten.ObjectId
 public typealias Map = MapCodableKit.Map
 
 public class MongoORM<T: MongoDocument> {
+    
     public let collection: MongoKitten.Collection
     
-    public convenience init(uri: URL, collectionName: String) throws {
-        #if DEBUG
-        print("MONGO: [CONNECTION] \(uri.absoluteString) -> \(collectionName)")
-        #endif
-        
-        let database = try MongoKitten.Database(uri.absoluteString)
+    public init(url: URL, collectionName: String) throws {
+        let database = try MongoKitten.Database(url.absoluteString)
         let collections = try database.listCollections()
         
         if let collection = collections.first(where: { $0.name == collectionName}) {
-            self.init(collection: collection)
+            self.collection = collection
         } else {
             let collection = try database.createCollection(named: collectionName)
-            self.init(collection: collection)
+            self.collection = collection
         }
     }
     
@@ -36,44 +33,16 @@ public class MongoORM<T: MongoDocument> {
         self.collection = collection
     }
     
-    public func update(_ document: T) throws -> T {
-        guard let oid = document.oid else { throw DocumentUpdateError.missingObjectId }
-        let query = Query(aqt: .valEquals(key: "_id", val: oid))
+    public func save(_ document: T) throws {
+        let query = Query(aqt: .valEquals(key: "_id", val: document.oid))
         let map = try Map(document: document)
         let mongoDocument = try map.makeDocument()
+        let response = try collection.update(query, to: mongoDocument, upserting: true, stoppingOnError: true)
         
         #if DEBUG
         print("MONGO: [UPDATE] \(mongoDocument)")
-        #endif
-        
-        let response = try collection.update(query, to: mongoDocument, stoppingOnError: true)
-        
-        
-        #if DEBUG
         print("MONGO: [RESULT] \(response)")
         #endif
-        
-        switch response {
-        case 0:
-            throw DocumentLoadError.documentNotFound
-        default:
-            return document
-        }
-    }
-    
-    public func insert(_ document: T) throws -> T {
-        var document = document
-        let map = try Map(document: document)
-        let mongoDocument = try map.makeDocument()
-        let response = try collection.insert(mongoDocument)
-        document.oid = response as? ObjectId
-        
-        #if DEBUG
-        print("MONGO: [INSERT] \(mongoDocument)")
-        print("MONGO: [RESULT] \(response)")
-        #endif
-        
-        return document
     }
     
     public func first(id: String) throws -> T {
@@ -149,8 +118,7 @@ public class MongoORM<T: MongoDocument> {
     }
     
     public func destroy(_ document: T) throws {
-        guard let oid = document.oid else { throw DocumentDeleteError.missingObjectId }
-        try destroy(oid: oid)
+        try destroy(oid: document.oid)
     }
     
     public func destroy(id: String) throws {

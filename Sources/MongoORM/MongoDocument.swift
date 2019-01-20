@@ -10,7 +10,7 @@ import MongoKitten
 import MapCodableKit
 
 public protocol MongoDocument: MapCodable {
-    var oid: ObjectId? { get set }
+    var oid: ObjectId { get }
 }
 
 public extension Array where Element: MongoDocument {
@@ -19,7 +19,7 @@ public extension Array where Element: MongoDocument {
     }
     
     func first(forId id: String) -> Element? {
-        return first(where: { $0.oid?.hexString == id })
+        return first(where: { $0.oid.hexString == id })
     }
     
     @discardableResult
@@ -29,12 +29,12 @@ public extension Array where Element: MongoDocument {
     
     @discardableResult
     mutating func remove(withId id: String) -> Element? {
-        guard let index = firstIndex(where: { $0.oid?.hexString == id }) else { return nil }
+        guard let index = firstIndex(where: { $0.oid.hexString == id }) else { return nil }
         return self.remove(at: index)
     }
     
     mutating func add(_ element: Element) {
-        if let id = element.oid?.hexString, let index = self.firstIndex(where: { $0.oid?.hexString == id }) {
+        if let index = self.firstIndex(where: { $0.oid == element.oid }) {
             self[index] = element
         } else {
             self.append(element)
