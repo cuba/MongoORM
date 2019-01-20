@@ -39,6 +39,9 @@ public extension Map {
         var primitives: [(String, Primitive?)] = []
         
         for (key, value) in makeDictionary() {
+            // Remove nil values
+            guard let value = value else { continue }
+            
             guard let primitive = value as? Primitive else {
                 throw DocumentSaveError.unsupportedType(key: key)
             }
