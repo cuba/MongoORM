@@ -11,11 +11,6 @@ import MapCodableKit
 
 public extension Map {
     
-    public convenience init(document: MongoDocument) throws {
-        self.init()
-        try document.fill(map: self)
-    }
-    
     /**
      Decodes a value stored for a key into a `MongoKitten.Document` and returns it
      
@@ -23,32 +18,74 @@ public extension Map {
      - returns: A `MongoKitten.Document` containing all the fields in the map
      */
     public func makeDocument() throws -> MongoKitten.Document {
-        let primitives = try self.makePrimitives()
-        let document = MongoKitten.Document(dictionaryElements: primitives)
+        var document = MongoKitten.Document()
+        
+        for (key, primitive) in try primitivesDictionary() {
+            // Remove nil values
+            guard let primitive = primitive else { continue }
+            document[key] = primitive
+        }
         
         return document
     }
     
-    /**
-     Converts this entire object into `MongoKitten.Primitive` dictionary elements containing all the fields stored in the map.
-     
-     - throws: Throws a `DocumentSaveError.unsupportedType` error if one of the values is not a `MongoKitten.Primitive`
-     - returns: `MongoKitten.Primitive` dictionary elements containing all the fields in the map
-     */
-    private func makePrimitives() throws -> [(String, Primitive?)] {
-        var primitives: [(String, Primitive?)] = []
+    public func primitivesDictionary() throws -> [String: Primitive?] {
+        var dictionary: [String: Primitive?] = [:]
         
         for (key, value) in makeDictionary() {
-            // Remove nil values
-            guard let value = value else { continue }
+            // Add empty values
+            guard let value = value else {
+                dictionary[key] = nil
+                continue
+            }
             
+            // Ensure the value supports primitive
             guard let primitive = value as? Primitive else {
                 throw DocumentSaveError.unsupportedType(key: key)
             }
             
-            primitives.append((key, primitive))
+            // Add the primitive
+            dictionary[key] = primitive
         }
         
-        return primitives
+        return dictionary
+    }
+    
+    /// Add an oid to this map.
+    ///
+    /// - Parameter oid: The oid to add.
+    /// - Throws: Any errors when adding this object to the map.
+    public func add(_ oid: ObjectId) throws {
+        try self.add(oid as Any, for: "_id")
+    }
+    
+    /// Return the oid of this object.
+    ///
+    /// - Returns: The oid of this object.
+    /// - Throws: If the value is missing or is incorrectly formatted.
+    public func oid() throws -> ObjectId {
+        guard let value: Any = try value(from: "_id") else {
+            throw DocumentLoadError.missingObjectId
+        }
+        
+        guard let objectId = value as? ObjectId else {
+            throw MapDecodingError.unexpectedType(key: "_id", expected: ObjectId.self, received: type(of: value).self)
+        }
+        
+        return objectId
     }
 }
+
+public extension MapEncodable {
+    public func makeDocument() throws -> Document {
+        let map = try filledMap()
+        return try map.makeDocument()
+    }
+    
+    public func primitivesDictionary() throws -> [String: Primitive?] {
+        let map = try filledMap()
+        return try map.primitivesDictionary()
+    }
+}
+
+

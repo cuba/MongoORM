@@ -1,5 +1,5 @@
 //
-//  MongoDocument.swift
+//  MongoObject.swift
 //  App
 //
 //  Created by Jacob Sikorski on 2018-11-26.
@@ -9,11 +9,15 @@ import Foundation
 import MongoKitten
 import MapCodableKit
 
-public protocol MongoDocument: MapCodable {
+public typealias ObjectId = MongoKitten.ObjectId
+
+public protocol MongoObject {
     var oid: ObjectId { get }
+    init(document: Document) throws
+    func makeDocument() throws -> MongoKitten.Document
 }
 
-public extension Array where Element: MongoDocument {
+public extension Array where Element: MongoObject {
     public func first(for oid: ObjectId) -> Iterator.Element? {
         return first(forId: oid.hexString)
     }
@@ -39,5 +43,22 @@ public extension Array where Element: MongoDocument {
         } else {
             self.append(element)
         }
+    }
+}
+
+public protocol MongoMappable: MongoObject, MapCodable {
+    
+}
+
+public extension MapCodable {
+    public init(document: Document) throws {
+        let keys = document.keys
+        var json: [String: Any?] = [:]
+        
+        for key in keys {
+            json[key] = document[key]
+        }
+        
+        try self.init(json: json)
     }
 }
