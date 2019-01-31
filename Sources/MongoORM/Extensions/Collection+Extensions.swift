@@ -18,7 +18,7 @@ public extension MongoKitten.Collection {
     /// - Parameter object: The object to save.
     /// - Returns: An EventLoopFuture that returns the InstantReply result.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
-    public func insert<T: MongoObject>(_ object: T) throws -> EventLoopFuture<InsertReply> {
+    public func insert<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<InsertReply> {
         let document = try object.makeDocument()
         return self.insert(document)
     }
@@ -30,7 +30,7 @@ public extension MongoKitten.Collection {
     /// - Parameter objects: The objects to save.
     /// - Returns: An EventLoopFuture that returns the InstantReply result.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
-    public func insert<T: MongoObject>(_ objects: [T]) throws -> EventLoopFuture<InsertReply> {
+    public func insert<T: MongoEncodable>(_ objects: [T]) throws -> EventLoopFuture<InsertReply> {
         let documents = try objects.map({ try $0.makeDocument() })
         return self.insert(documents: documents)
     }
@@ -40,7 +40,7 @@ public extension MongoKitten.Collection {
     /// - Parameter object: The object to insert or update.
     /// - Returns: An EventLoopFuture that returns the UpdateReply result.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
-    public func upsert<T: MongoObject>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
+    public func upsert<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
         let document = try object.makeDocument()
         return upsert(where: "_id" == object.oid, to: document)
     }
@@ -50,7 +50,7 @@ public extension MongoKitten.Collection {
     /// - Parameter object: The object to update. This object must have an oid that is already saved in the database.
     /// - Returns: An EventLoopFuture that returns the UpdateReply result.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
-    public func update<T: MongoObject>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
+    public func update<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
         let document = try object.makeDocument()
         return update(where: "_id" == object.oid, to: document)
     }

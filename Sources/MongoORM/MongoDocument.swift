@@ -11,10 +11,16 @@ import MapCodableKit
 
 public typealias ObjectId = MongoKitten.ObjectId
 
-public protocol MongoObject {
+public protocol MongoEncodable {
     var oid: ObjectId { get }
-    init(document: Document) throws
     func makeDocument() throws -> MongoKitten.Document
+}
+
+public protocol MongoDecodable {
+    init(document: Document) throws
+}
+
+public protocol MongoObject: MongoEncodable, MongoDecodable {
 }
 
 public extension Array where Element: MongoObject {
@@ -46,11 +52,7 @@ public extension Array where Element: MongoObject {
     }
 }
 
-public protocol MongoMappable: MongoObject, MapCodable {
-    
-}
-
-public extension MapCodable {
+public extension MapDecodable {
     public init(document: Document) throws {
         let keys = document.keys
         var json: [String: Any?] = [:]

@@ -6,7 +6,7 @@ import MapCodableKit
 final class MongoORMTests: XCTestCase {
     private var _database: Database?
     
-    struct TestUser: MongoMappable {
+    struct TestUser: MongoObject, MapCodable {
         let oid: ObjectId
         var email: String
         var password: String
