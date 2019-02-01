@@ -55,13 +55,13 @@ public extension MongoKitten.Collection {
         return update(where: "_id" == object.oid, to: document)
     }
     
-    // MARK: - First
+    // MARK: - Required
     
     /// Return the first object in the collection for the given query.
     ///
     /// - Parameter query: The query used to find the object.
     /// - Returns: An EventLoopFuture that returns the document.
-    public func first(where query: Query) -> EventLoopFuture<Document> {
+    public func required(where query: Query) -> EventLoopFuture<Document> {
         let future = self.findOne(query)
         
         return future.thenThrowing( { document in
@@ -73,22 +73,85 @@ public extension MongoKitten.Collection {
         })
     }
     
+    /// Returns the first object with the given oid.
+    ///
+    /// - Parameter oid: The ObjectId identifying the object we want to retrive.
+    /// - Returns: An EventLoopFuture that returns the document.
+    public func required(oid: ObjectId) -> EventLoopFuture<Document> {
+        return required(where: "_id" == oid)
+    }
+    
     /// Returns the first object with the given oid as a hex string.
     ///
     /// - Parameter id: The ObjectId in a string (hex) format.
     /// - Returns: An EventLoopFuture that returns the document.
     /// - Throws: Throws when the ObjectID cannot be created using the hex string or a `MongoKitten` error
-    public func first(oid: String) throws -> EventLoopFuture<Document> {
+    public func required(oid: String) throws -> EventLoopFuture<Document> {
         let oid = try ObjectId(oid)
-        return try first(oid: oid)
+        return required(oid: oid)
     }
     
-    /// Returns the first object with the given oid.
+    /// First document converted to an object.
     ///
-    /// - Parameter oid: The ObjectId identifying the object we want to retrive.
-    /// - Returns: An EventLoopFuture that returns the document.
-    public func first(oid: ObjectId) throws -> EventLoopFuture<Document> {
-        return first(where: "_id" == oid)
+    /// - Parameters:
+    ///   - query: The query used to find the object.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func required<T: MongoDecodable>(where query: Query, type: T.Type) -> EventLoopFuture<T> {
+        return required(where: query).decode(to: type)
+    }
+    
+    /// First document converted to an object.
+    ///
+    /// - Parameters:
+    ///   - oid: The object id.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func required<T: MongoDecodable>(oid: ObjectId, type: T.Type) -> EventLoopFuture<T> {
+        return required(oid: oid).decode(to: type)
+    }
+    
+    /// First document converted to an object.
+    ///
+    /// - Parameters:
+    ///   - oid: The object id in hex string format.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func required<T: MongoDecodable>(oid: String, type: T.Type) throws -> EventLoopFuture<T> {
+        return try required(oid: oid).decode(to: type)
+    }
+    
+    // MARK: - Find One
+    
+    /// First document converted to an object.
+    ///
+    /// - Parameters:
+    ///   - query: The query used to find the object.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func findOne<T: MongoDecodable>(where query: Query, type: T.Type) -> EventLoopFuture<T?> {
+        return findOne(query).decode(to: type)
+    }
+    
+    /// First document converted to an object.
+    ///
+    /// - Parameters:
+    ///   - oid: The object id.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func findOne<T: MongoDecodable>(oid: ObjectId, type: T.Type) -> EventLoopFuture<T?> {
+        return findOne(where: "_id" == oid, type: type)
+    }
+    
+    /// First document converted to an object.
+    ///
+    /// - Parameters:
+    ///   - oid: The object id in hex string format.
+    ///   - to: The type of object to decode.
+    /// - Returns: The decoded object.
+    public func findOne<T: MongoDecodable>(oid: String, type: T.Type) throws -> EventLoopFuture<T?> {
+        let objectId = try ObjectId(oid)
+        return findOne(oid: objectId, type: type)
     }
     
     // MARK: - Destroy
@@ -119,7 +182,7 @@ public extension MongoKitten.Collection {
         return destroy(oid: object.oid)
     }
     
-    // MARK: - Contains
+    // MARK: - Exists
     
     /// Check if the object exists in the collection.
     ///

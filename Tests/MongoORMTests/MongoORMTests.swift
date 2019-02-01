@@ -44,8 +44,8 @@ final class MongoORMTests: XCTestCase {
             XCTAssertNoThrow(try collection.insert(createdUser).wait())
             
             // Then
-            let document = try collection.first(oid: createdUser.oid).wait()
-            let loadedUser = try document.object(TestUser.self)
+            let document = try collection.required(oid: createdUser.oid).wait()
+            let loadedUser = try document.decode(to: TestUser.self)
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
@@ -64,8 +64,8 @@ final class MongoORMTests: XCTestCase {
             XCTAssertNoThrow(try collection.upsert(createdUser).wait())
             
             // Then
-            let document = try collection.first(oid: createdUser.oid).wait()
-            let loadedUser = try document.object(TestUser.self)
+            let document = try collection.required(oid: createdUser.oid).wait()
+            let loadedUser = try document.decode(to: TestUser.self)
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
@@ -86,8 +86,8 @@ final class MongoORMTests: XCTestCase {
             XCTAssertNoThrow(try collection.update(createdUser).wait())
             
             // Then
-            let document = try collection.first(oid: createdUser.oid).wait()
-            let loadedUser = try document.object(TestUser.self)
+            let document = try collection.required(oid: createdUser.oid).wait()
+            let loadedUser = try document.decode(to: TestUser.self)
             XCTAssertEqual(try collection.count().wait(), 1)
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
@@ -114,7 +114,7 @@ final class MongoORMTests: XCTestCase {
             var loadedUsers: [TestUser] = []
             
             try collection.find().forEach(handler: { document in
-                let loadedUser = try document.object(TestUser.self)
+                let loadedUser = try document.decode(to: TestUser.self)
                 loadedUsers.append(loadedUser)
             }).wait()
             
@@ -127,6 +127,32 @@ final class MongoORMTests: XCTestCase {
                 XCTAssertEqual(createdUser.email, loadedUser?.email)
                 XCTAssertEqual(createdUser.password, loadedUser?.password)
             }
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFirstWithQuery() {
+        // Given
+        let createdUsers = [
+            TestUser(email: "someone1@example.com", password: "foobar1"),
+            TestUser(email: "someone2@example.com", password: "foobar2"),
+            TestUser(email: "someone3@example.com", password: "foobar3")
+        ]
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            XCTAssertNoThrow(try collection.insert(createdUsers).wait())
+            
+            // Then
+            XCTAssertEqual(try collection.count().wait(), 3)
+            
+            let createdUser = createdUsers[1]
+            let loadedUser = try collection.required(where: "_id" == createdUser.oid, type: TestUser.self).wait()
+            XCTAssertEqual(createdUser.oid, loadedUser.oid)
+            XCTAssertEqual(createdUser.email, loadedUser.email)
+            XCTAssertEqual(createdUser.password, loadedUser.password)
         } catch {
             XCTFail("Should not throw")
         }
@@ -149,8 +175,7 @@ final class MongoORMTests: XCTestCase {
             XCTAssertEqual(try collection.count().wait(), 3)
             
             let createdUser = createdUsers[1]
-            let document = try collection.first(oid: createdUser.oid.hexString).wait()
-            let loadedUser = try document.object(TestUser.self)
+            let loadedUser = try collection.required(oid: createdUser.oid.hexString, type: TestUser.self).wait()
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
@@ -176,11 +201,217 @@ final class MongoORMTests: XCTestCase {
             XCTAssertEqual(try collection.count().wait(), 3)
             
             let createdUser = createdUsers[1]
-            let document = try collection.first(oid: createdUser.oid).wait()
-            let loadedUser = try document.object(TestUser.self)
+            let loadedUser = try collection.required(oid: createdUser.oid, type: TestUser.self).wait()
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFirstWithQuery_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let _ = try collection.required(where: "_id" == objectId, type: TestUser.self).wait()
+            
+            // Not
+            XCTFail("Should have thrown error")
+        } catch let error {
+            // Then
+            guard let loadError = error as? DocumentLoadError else {
+                XCTFail("Expecting `DocumentLoadError`")
+                return
+            }
+            
+            switch loadError {
+            case .documentNotFound:
+                break;
+            default:
+                XCTFail("Unexpected error type: \(loadError)")
+            }
+        }
+    }
+    
+    func testFirstWithStringId_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let _ = try collection.required(oid: objectId.hexString, type: TestUser.self).wait()
+            
+            // Not
+            XCTFail("Should have thrown error")
+        } catch let error {
+            // Then
+            guard let loadError = error as? DocumentLoadError else {
+                XCTFail("Expecting `DocumentLoadError`")
+                return
+            }
+            
+            switch loadError {
+            case .documentNotFound:
+                break;
+            default:
+                XCTFail("Unexpected error type: \(loadError)")
+            }
+        }
+    }
+    
+    func testFirstWithObjectId_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let _ = try collection.required(oid: objectId, type: TestUser.self).wait()
+            
+            // Not
+            XCTFail("Should have thrown error")
+        } catch let error {
+            // Then
+            guard let loadError = error as? DocumentLoadError else {
+                XCTFail("Expecting `DocumentLoadError`")
+                return
+            }
+            
+            switch loadError {
+            case .documentNotFound:
+                break;
+            default:
+                XCTFail("Unexpected error type: \(loadError)")
+            }
+        }
+    }
+    
+    func testFindOneWithQuery() {
+        // Given
+        let createdUsers = [
+            TestUser(email: "someone1@example.com", password: "foobar1"),
+            TestUser(email: "someone2@example.com", password: "foobar2"),
+            TestUser(email: "someone3@example.com", password: "foobar3")
+        ]
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            XCTAssertNoThrow(try collection.insert(createdUsers).wait())
+            
+            // Then
+            XCTAssertEqual(try collection.count().wait(), 3)
+            
+            let createdUser = createdUsers[1]
+            let loadedUser = try collection.findOne(where: "_id" == createdUser.oid, type: TestUser.self).wait()
+            XCTAssertEqual(createdUser.oid, loadedUser?.oid)
+            XCTAssertEqual(createdUser.email, loadedUser?.email)
+            XCTAssertEqual(createdUser.password, loadedUser?.password)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFindOneWithStringId() {
+        // Given
+        let createdUsers = [
+            TestUser(email: "someone1@example.com", password: "foobar1"),
+            TestUser(email: "someone2@example.com", password: "foobar2"),
+            TestUser(email: "someone3@example.com", password: "foobar3")
+        ]
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            XCTAssertNoThrow(try collection.insert(createdUsers).wait())
+            
+            // Then
+            XCTAssertEqual(try collection.count().wait(), 3)
+            
+            let createdUser = createdUsers[1]
+            let loadedUser = try collection.findOne(oid: createdUser.oid.hexString, type: TestUser.self).wait()
+            XCTAssertEqual(createdUser.oid, loadedUser?.oid)
+            XCTAssertEqual(createdUser.email, loadedUser?.email)
+            XCTAssertEqual(createdUser.password, loadedUser?.password)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFindOneWithObjectId() {
+        // Given
+        let createdUsers = [
+            TestUser(email: "someone1@example.com", password: "foobar1"),
+            TestUser(email: "someone2@example.com", password: "foobar2"),
+            TestUser(email: "someone3@example.com", password: "foobar3")
+        ]
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            XCTAssertNoThrow(try collection.insert(createdUsers).wait())
+            
+            // Then
+            XCTAssertEqual(try collection.count().wait(), 3)
+            
+            let createdUser = createdUsers[1]
+            let loadedUser = try collection.findOne(oid: createdUser.oid, type: TestUser.self).wait()
+            XCTAssertEqual(createdUser.oid, loadedUser?.oid)
+            XCTAssertEqual(createdUser.email, loadedUser?.email)
+            XCTAssertEqual(createdUser.password, loadedUser?.password)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFindOneWithQuery_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let loadedUser = try collection.findOne(where: "_id" == objectId, type: TestUser.self).wait()
+            
+            // Then
+            XCTAssertNil(loadedUser)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFindOneWithStringId_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let loadedUser = try collection.findOne(oid: objectId.hexString, type: TestUser.self).wait()
+            
+            // Then
+            XCTAssertNil(loadedUser)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testFindOneWithObjectId_NotFound() {
+        // Given
+        let objectId = ObjectId()
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            let loadedUser = try collection.findOne(oid: objectId, type: TestUser.self).wait()
+            
+            // Then
+            XCTAssertNil(loadedUser)
         } catch {
             XCTFail("Should not throw")
         }

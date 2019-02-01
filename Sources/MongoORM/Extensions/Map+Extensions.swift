@@ -10,7 +10,7 @@ import MongoKitten
 import MapCodableKit
 
 public extension Map {
-    
+    static let objectIdKey = KeyPart.object(key: "_id")
     /**
      Decodes a value stored for a key into a `MongoKitten.Document` and returns it
      
@@ -55,16 +55,16 @@ public extension Map {
     ///
     /// - Parameter oid: The oid to add.
     /// - Throws: Any errors when adding this object to the map.
-    public func add(_ oid: ObjectId) throws {
-        try self.add(oid as Any, for: "_id")
+    public func add(_ oid: ObjectId, for key: MapKey = Map.objectIdKey) throws {
+        try self.add(oid as Any, for: key)
     }
     
     /// Return the oid of this object.
     ///
     /// - Returns: The oid of this object.
     /// - Throws: If the value is missing or is incorrectly formatted.
-    public func oid() throws -> ObjectId {
-        guard let value: Any = try value(from: "_id") else {
+    public func oid(from key: MapKey = Map.objectIdKey) throws -> ObjectId {
+        guard let value: Any = try value(from: key) else {
             throw DocumentLoadError.missingObjectId
         }
         

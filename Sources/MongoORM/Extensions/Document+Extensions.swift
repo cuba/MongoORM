@@ -15,7 +15,7 @@ extension Document {
     /// - Parameter type: The type of object we want to de-serialize to.
     /// - Returns: The object if successfully de-serialized.
     /// - Throws: Any error while de-serializing.
-    func object<T: MongoDecodable>(_ type: T.Type) throws -> T {
+    func decode<T: MongoDecodable>(to type: T.Type) throws -> T {
         return try T(document: self)
     }
 }
