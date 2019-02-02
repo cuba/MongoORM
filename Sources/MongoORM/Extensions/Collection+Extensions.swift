@@ -42,7 +42,7 @@ public extension MongoKitten.Collection {
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func upsert<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
         let document = try object.makeDocument()
-        return upsert(where: "_id" == object.oid, to: document)
+        return upsert(where: "_id" == object._id, to: document)
     }
     
     /// Update an object in the collection. The full object is replaced in the collection using its oid.
@@ -52,7 +52,7 @@ public extension MongoKitten.Collection {
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func update<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<UpdateReply> {
         let document = try object.makeDocument()
-        return update(where: "_id" == object.oid, to: document)
+        return update(where: "_id" == object._id, to: document)
     }
     
     // MARK: - Required
@@ -179,7 +179,7 @@ public extension MongoKitten.Collection {
     /// - Parameter object: The object we want to destroy.
     /// - Returns: Returns the EventLoopFuture that returns the number of objects deleted.
     public func destroy<T: MongoObject>(_ object: T) -> EventLoopFuture<Int> {
-        return destroy(oid: object.oid)
+        return destroy(oid: object._id)
     }
     
     // MARK: - Exists
@@ -219,6 +219,6 @@ public extension MongoKitten.Collection {
     /// - Parameter object: The object to get the oid from.
     /// - Returns: Returns the EventLoopFuture that returns a boolean. This boolean is true if the object exists.
     public func exists<T: MongoObject>(_ object: T) -> EventLoopFuture<Bool> {
-        return exists(oid: object.oid)
+        return exists(oid: object._id)
     }
 }

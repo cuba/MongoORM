@@ -1,32 +1,19 @@
 import XCTest
 import MongoKitten
-import MapCodableKit
 @testable import MongoORM
 
 final class MongoORMTests: XCTestCase {
     private var _database: Database?
     
-    struct TestUser: MongoObject, MapCodable {
-        let oid: ObjectId
+    struct TestUser: MongoObject, Codable {
+        let _id: ObjectId
         var email: String
         var password: String
         
         init(email: String, password: String) {
-            self.oid = ObjectId()
+            self._id = ObjectId()
             self.email = email
             self.password = password
-        }
-        
-        init(map: Map) throws {
-            self.oid        = try map.oid()
-            self.email      = try map.value(from: "email")
-            self.password   = try map.value(from: "password")
-        }
-        
-        func fill(map: Map) throws {
-            try map.add(oid)
-            try map.add(email, for: "email")
-            try map.add(password, for: "password")
         }
     }
     
@@ -231,8 +218,6 @@ final class MongoORMTests: XCTestCase {
             switch loadError {
             case .documentNotFound:
                 break;
-            default:
-                XCTFail("Unexpected error type: \(loadError)")
             }
         }
     }
@@ -258,8 +243,6 @@ final class MongoORMTests: XCTestCase {
             switch loadError {
             case .documentNotFound:
                 break;
-            default:
-                XCTFail("Unexpected error type: \(loadError)")
             }
         }
     }
@@ -285,8 +268,6 @@ final class MongoORMTests: XCTestCase {
             switch loadError {
             case .documentNotFound:
                 break;
-            default:
-                XCTFail("Unexpected error type: \(loadError)")
             }
         }
     }
