@@ -9,11 +9,26 @@ final class MongoORMTests: XCTestCase {
         let _id: ObjectId
         var email: String
         var password: String
+        var createdAt: Date
+        var updatedAt: Date
+        
+        // For Testing
+        private(set) var didSaveCalled = false
         
         init(email: String, password: String) {
             self._id = ObjectId()
             self.email = email
             self.password = password
+            self.createdAt = Date()
+            self.updatedAt = Date()
+        }
+        
+        mutating func willSave() {
+            updatedAt = Date()
+        }
+        
+        mutating func didSave() {
+            self.didSaveCalled = true
         }
     }
     
@@ -23,12 +38,12 @@ final class MongoORMTests: XCTestCase {
     
     func testInsertDocument() {
         // Given
-        let createdUser = TestUser(email: "someone@example.com", password: "foobar123")
+        let newUser = TestUser(email: "someone@example.com", password: "foobar123")
         
         do {
             // When
             let collection = try self.usersCollection()
-            XCTAssertNoThrow(try collection.insert(createdUser).wait())
+            let createdUser = try collection.insert(newUser).wait()
             
             // Then
             let document = try collection.required(oid: createdUser.oid).wait()
@@ -36,6 +51,8 @@ final class MongoORMTests: XCTestCase {
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
+            XCTAssertEqual(createdUser.didSaveCalled, true)
+            XCTAssertNotEqual(createdUser.updatedAt, newUser.updatedAt)
         } catch {
             XCTFail("Should not throw")
         }
@@ -43,12 +60,12 @@ final class MongoORMTests: XCTestCase {
     
     func testUpsertDocument() {
         // Given
-        let createdUser = TestUser(email: "someone@example.com", password: "foobar123")
+        let newUser = TestUser(email: "someone@example.com", password: "foobar123")
         
         do {
             // When
             let collection = try self.usersCollection()
-            XCTAssertNoThrow(try collection.upsert(createdUser).wait())
+            let createdUser = try collection.upsert(newUser).wait()
             
             // Then
             let document = try collection.required(oid: createdUser.oid).wait()
@@ -56,6 +73,7 @@ final class MongoORMTests: XCTestCase {
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
+            XCTAssertEqual(createdUser.didSaveCalled, true)
         } catch {
             XCTFail("Should not throw")
         }
@@ -63,22 +81,31 @@ final class MongoORMTests: XCTestCase {
     
     func testUpdateDocument() {
         // Given
-        var createdUser = TestUser(email: "someone@example.com", password: "foobar123")
+        let newUser = TestUser(email: "someone@example.com", password: "foobar123")
         
         do {
             // When
             let collection = try self.usersCollection()
-            XCTAssertNoThrow(try collection.upsert(createdUser).wait())
+            var createdUser = try collection.upsert(newUser).wait()
             createdUser.password = "foobar345"
-            XCTAssertNoThrow(try collection.update(createdUser).wait())
+            let updatedUser = try collection.update(createdUser).wait()
             
             // Then
             let document = try collection.required(oid: createdUser.oid).wait()
             let loadedUser = try document.decode(to: TestUser.self)
             XCTAssertEqual(try collection.count().wait(), 1)
+            
+            XCTAssertNotEqual(newUser.password, loadedUser.password)
+            
             XCTAssertEqual(createdUser.oid, loadedUser.oid)
             XCTAssertEqual(createdUser.email, loadedUser.email)
             XCTAssertEqual(createdUser.password, loadedUser.password)
+            XCTAssertEqual(createdUser.didSaveCalled, true)
+            
+            XCTAssertEqual(updatedUser.oid, loadedUser.oid)
+            XCTAssertEqual(updatedUser.email, loadedUser.email)
+            XCTAssertEqual(updatedUser.password, loadedUser.password)
+            XCTAssertEqual(updatedUser.didSaveCalled, true)
         } catch {
             XCTFail("Should not throw")
         }
