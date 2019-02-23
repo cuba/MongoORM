@@ -16,13 +16,13 @@ public extension MongoKitten.Collection {
     /// Note: If the oid of the object is not added to the map, it will generate a new ObjectId.
     ///
     /// - Parameter object: The object to save.
-    /// - Returns: An EventLoopFuture that returns the InstantReply result.
+    /// - Returns: An EventLoopFuture that returns the inserted object.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func insert<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<T> {
         var object = object
         
         // Inform callback
-        object.willSave()
+        try object.willSave()
         
         let document = try object.makeDocument()
         return self.insert(document).thenThrowing({ reply in
@@ -45,7 +45,7 @@ public extension MongoKitten.Collection {
     /// Note: If the oid of the object is not added to the map, it will generate a new ObjectId.
     ///
     /// - Parameter objects: The objects to save.
-    /// - Returns: An EventLoopFuture that returns the InstantReply result.
+    /// - Returns: An EventLoopFuture that returns the updated object.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func insert<T: MongoEncodable>(_ objects: [T]) throws -> EventLoopFuture<[T]> {
         var objects = objects
@@ -53,7 +53,7 @@ public extension MongoKitten.Collection {
         // Inform callbacks
         for (index, object) in objects.enumerated() {
             var object = object
-            object.willSave()
+            try object.willSave()
             objects[index] = object
         }
         
@@ -81,13 +81,13 @@ public extension MongoKitten.Collection {
     /// Insert or update an object in the collection. It uses the oid to save or update this object.
     ///
     /// - Parameter object: The object to insert or update.
-    /// - Returns: An EventLoopFuture that returns the UpdateReply result.
+    /// - Returns: An EventLoopFuture that returns the updated object.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func upsert<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<T> {
         var object = object
         
         // Inform callback
-        object.willSave()
+        try object.willSave()
         
         let document = try object.makeDocument()
         return upsert(where: "_id" == object._id, to: document).thenThrowing({ reply in
@@ -104,18 +104,53 @@ public extension MongoKitten.Collection {
     /// Update an object in the collection. The full object is replaced in the collection using its oid.
     ///
     /// - Parameter object: The object to update. This object must have an oid that is already saved in the database.
-    /// - Returns: An EventLoopFuture that returns the UpdateReply result.
+    /// - Returns: An EventLoopFuture that returns the updated object.
     /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
     public func update<T: MongoEncodable>(_ object: T) throws -> EventLoopFuture<T> {
         var object = object
         
         // Inform callback
-        object.willSave()
+        try object.willSave()
         
         let document = try object.makeDocument()
         return update(where: "_id" == object._id, to: document).thenThrowing({ reply in
             guard reply.isSuccessful else {
                 throw DocumentSaveError.unknown
+            }
+            
+            // Inform callback
+            object.didSave()
+            return object
+        })
+    }
+
+    
+    /// Updates only the specified keys leaving everything else alone.
+    /// NOTE: The object returned is not reloaded. therefore any fields that are changed but not specified
+    /// in `valuesForKeys` may not reflect what the database contains.
+    ///
+    /// - Parameters:
+    ///   - object: The object to update.
+    ///   - keys: The keys to update on the object.
+    /// - Returns: A new future with the updated object.
+    /// - Throws: Either an error with mapping the object or a `MongoKitten` error.
+    public func update<O: MongoObject>(object: O, valuesForKeys keys: [String]) throws -> EventLoopFuture<O> {
+        var object = object
+        
+        // Inform callback
+        try object.willSave()
+        
+        let document = try object.makeDocument()
+        var values: [String: Primitive?] = [:]
+        
+        for key in keys {
+            values[key] = document[key]
+        }
+        
+        // Update the parameters specified
+        return self.update(where: "_id" == object._id, setting: values, multiple: false).thenThrowing({ updateReply in
+            guard updateReply.isSuccessful else {
+                throw DocumentSaveError.recievedMessage(updateReply.localizedDescription)
             }
             
             // Inform callback

@@ -3,9 +3,10 @@ import MongoKitten
 @testable import MongoORM
 
 final class MongoORMTests: XCTestCase {
-    private var _database: Database?
-    
     struct TestUser: MongoObject, Codable {
+        
+        static let collectionName = "test_users"
+        
         let _id: ObjectId
         var email: String
         var password: String
@@ -106,6 +107,45 @@ final class MongoORMTests: XCTestCase {
             XCTAssertEqual(updatedUser.email, loadedUser.email)
             XCTAssertEqual(updatedUser.password, loadedUser.password)
             XCTAssertEqual(updatedUser.didSaveCalled, true)
+        } catch {
+            XCTFail("Should not throw")
+        }
+    }
+    
+    func testUpdateDocumentFields() {
+        // Given
+        let newUser = TestUser(email: "someone@example.com", password: "foobar123")
+        
+        do {
+            // When
+            let collection = try self.usersCollection()
+            var createdUser = try collection.upsert(newUser).wait()
+            createdUser.password = "foobar345"
+            createdUser.email = "notsomeone@example.com"
+            let updatedUser = try collection.update(object: createdUser, valuesForKeys: ["password"]).wait()
+            
+            // Then
+            let document = try collection.required(oid: createdUser.oid).wait()
+            let loadedUser = try document.decode(to: TestUser.self)
+            XCTAssertEqual(try collection.count().wait(), 1)
+            
+            XCTAssertNotEqual(newUser.password, loadedUser.password)
+            XCTAssertEqual(newUser.email, loadedUser.email)
+            
+            // The created user before updating
+            XCTAssertEqual(createdUser.oid, loadedUser.oid)
+            XCTAssertNotEqual(createdUser.email, loadedUser.email)
+            XCTAssertEqual(createdUser.password, loadedUser.password)
+            XCTAssertEqual(createdUser.didSaveCalled, true)
+            
+            // The returned updated user
+            XCTAssertEqual(updatedUser.oid, loadedUser.oid)
+            XCTAssertEqual(updatedUser.password, loadedUser.password)
+            XCTAssertEqual(updatedUser.didSaveCalled, true)
+            
+            // TODO: @JS This should be equal but that requires the reloading of the document (inefficient)
+            // after saving so that
+            XCTAssertNotEqual(updatedUser.email, loadedUser.email)
         } catch {
             XCTFail("Should not throw")
         }
@@ -494,24 +534,34 @@ final class MongoORMTests: XCTestCase {
         }
     }
     
-    private func database() throws -> Database {
+    func usersCollection() throws -> MongoKitten.Collection {
+        return try ConnectionPool.shared.connect().usersCollection
+    }
+}
+
+class ConnectionPool {
+    static let shared = ConnectionPool(url: "mongodb://localhost/mongo_orm_tests")
+    var _database: Database?
+    var url: String
+    
+    init(url: String) {
+        self.url = url
+    }
+    
+    func connect() throws -> Database {
         if let database = self._database {
             return database
         } else {
-            let database = try Database.synchronousConnect("mongodb://localhost/mongo_orm_tests")
+            let database = try Database.synchronousConnect(url)
             self._database = database
             return database
         }
-    }
-
-    func usersCollection() throws -> MongoKitten.Collection {
-        return try self.database().usersCollection
     }
 }
 
 extension Database {
     
     var usersCollection: MongoKitten.Collection {
-        return self["users"]
+        return self[MongoORMTests.TestUser.collectionName]
     }
 }

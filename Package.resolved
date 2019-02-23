@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/OpenKitten/BSON.git",
         "state": {
           "branch": null,
-          "revision": "a42fc9fcbe679ba3a40fbaf66934dac79b0965de",
-          "version": "6.0.0"
+          "revision": "9b66172551529b79871f37b064810ff0bee310af",
+          "version": "6.0.2"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/OpenKitten/MongoKitten.git",
         "state": {
           "branch": null,
-          "revision": "ca17b07d55dceb6cb075467bd07cedda4676f077",
-          "version": "5.0.0"
+          "revision": "86d771dd5cf366a9141204aa2bb0e2f2ea7df60c",
+          "version": "5.1.1"
         }
       },
       {

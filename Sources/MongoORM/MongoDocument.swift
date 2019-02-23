@@ -13,7 +13,8 @@ public typealias ObjectId = MongoKitten.ObjectId
 public protocol MongoEncodable {
     var _id: ObjectId { get }
     func makeDocument() throws -> MongoKitten.Document
-    mutating func willSave()
+    
+    mutating func willSave() throws
     mutating func didSave()
 }
 
@@ -30,9 +31,12 @@ extension MongoObject {
         return _id
     }
     
-    public func willSave() {}
-    
+    public func willSave() throws {}
     public func didSave() {}
+    
+    public static func willLoad(document: Document) throws -> Document {
+        return document
+    }
 }
 
 public extension Array where Element: MongoObject {
