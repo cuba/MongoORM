@@ -40,7 +40,7 @@ extension MongoObject {
 }
 
 public extension Array where Element: MongoObject {
-    public func first(for oid: ObjectId) -> Iterator.Element? {
+    func first(for oid: ObjectId) -> Iterator.Element? {
         return first(forId: oid.hexString)
     }
     
@@ -69,13 +69,13 @@ public extension Array where Element: MongoObject {
 }
 
 public extension Decodable {
-    public init(document: Document) throws {
+    init(document: Document) throws {
         self = try document.decode(to: Self.self)
     }
 }
 
 public extension Encodable {
-    public func makeDocument() throws -> Document {
+    func makeDocument() throws -> Document {
         return try Document.encode(self)
     }
 }

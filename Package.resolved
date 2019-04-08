@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/OpenKitten/BSON.git",
         "state": {
           "branch": null,
-          "revision": "9b66172551529b79871f37b064810ff0bee310af",
-          "version": "6.0.2"
+          "revision": "f12841c09005a7578b04800610081bd0fc87e2f1",
+          "version": "6.0.4"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/OpenKitten/MongoKitten.git",
         "state": {
           "branch": null,
-          "revision": "86d771dd5cf366a9141204aa2bb0e2f2ea7df60c",
-          "version": "5.1.1"
+          "revision": "07458aa3f4f014c3ebb55e72bb56ebaeca5c3764",
+          "version": "5.1.8"
         }
       },
       {
@@ -24,8 +24,8 @@
         "repositoryURL": "https://github.com/apple/swift-nio.git",
         "state": {
           "branch": null,
-          "revision": "98434c1f1d687ff5a24d2cabfbd19b5c7d2d7a2f",
-          "version": "1.13.0"
+          "revision": "29a9f2aca71c8afb07e291336f1789337ce235dd",
+          "version": "1.13.2"
         }
       },
       {
